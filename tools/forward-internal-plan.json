@@ -1,0 +1,28 @@
+{
+  "name": "forward_internal",
+  "target_version": "4.1.10.27",
+  "capture_script_id": "FWD-CAP-20261028-04-R3",
+  "required_probe_build_id": "FWD-PROBE-20261028-04",
+  "required_features": ["follow_read_offset"],
+  "note": "Observation only. Uses existing schema-2 probes; never invokes native forwarding functions.",
+  "points": [
+    {
+      "rva": "0x2161FC0", "dump": 256, "dump_reg": 3,
+      "note": "Common Forward business entry; R8 is the source DTO. Read identity bytes at source +0xB8, independent of the UI handler subclass."
+    },
+    {
+      "rva": "0x16BDF60", "dump": 32, "dump_reg": 2,
+      "follow_off": 0, "follow2_off": 0, "follow_len": 32, "follow_read_offset": 400,
+      "note": "Worker service entry; follow RDX vector to its first descriptor, then read its identity tail at descriptor +0x190."
+    },
+    {
+      "rva": "0x3689B10", "dump": 32, "dump_reg": 2,
+      "follow_off": 0, "follow_len": 256,
+      "note": "Per-descriptor request-wrapper constructor; follow its shared pointer to the descriptor."
+    },
+    {
+      "rva": "0x2160460", "dump": 96, "dump_reg": 3,
+      "note": "UI completion-callback bundle passed in R8."
+    }
+  ]
+}

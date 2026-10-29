@@ -189,7 +189,7 @@ namespace WeixinSend
             // 短字符串: 使用内联缓冲区
             memcpy(ws->inline_buf, wstr.data(), wstr.size() * sizeof(wchar_t));
             ws->inline_buf[wstr.size()] = L'\0';
-            ws->cap = 0xF;
+            ws->cap = 0x7;   // 原生 wstring SSO 容量为 7（0x096B80 里 [rcx+0x18]=7）
         }
         else
         {
@@ -266,8 +266,8 @@ namespace WeixinSend
 
         // === 图片路径 ===
         SetWeixinStringU((WeixinStringUnicode*)(msgBuf + 0xF0 / 8), imgPath);
-        *(uint64_t*)(msgBuf + 0x100 / 8) = imgPath.size(); // 图片路径长度
-        *(uint64_t*)(msgBuf + 0x108 / 8) = CalcWxCapacity(imgPath.size());
+        // 长度/容量已由 SetWeixinStringU 按 UTF-16 字符数写入；
+        // 这里不能再用 UTF-8 字节数覆盖（中文路径会写错长度）。
 
 
         *(uint64_t*)(msgBuf + 0x130 / 8) = 0xF;
@@ -498,6 +498,91 @@ namespace WeixinSend
     }
 
 
+
+
+    // ------------------------------------------------------------------
+    // AppMsg（卡片/视频号，type=49）
+    //
+    // 链路（静态 + 动态双证据，见 docs/STATIC_ANALYSIS.md §8.8）：
+    //   0xA21550(ChatMsg):
+    //       if (ChatMsg+0x298 == 1) {
+    //           sub_A1FB00();                       // 惰性创建 XML 模型 → ChatMsg+0x278
+    //           model = *(ChatMsg+0x278);
+    //           (*(*model + 8))(model, ChatMsg);    // ToXml(模型, ChatMsg)
+    //       }
+    //   ToXml 把生成的 XML 写入 **第二参数 + 0x180**（len@+0x190, cap@+0x198）。
+    //   动态实测（oneclick_toxml 抓到的真实卡片）：
+    //       xml_length = 1532
+    //       xml_prefix = "<msg><appmsg appid=\"\" sdkver=\"0\"><title>…"
+    //       context_ptr = ChatMsg 地址
+    //   ⇒ ChatMsg+0x180 就是 AppMsg 的 XML 字段，不是 +0x168 / +0xE0。
+    //
+    // 风险（必须在真机确认）：若发送管线自己会调 0xA21550 且 +0x298==1，
+    // 它会用（空的）模型重新生成 XML 覆盖我们写入的内容。
+    // 因此这里同时提供 mode：
+    //   mode=1 直接写 XML 到 +0x180（简单，可能被覆盖）
+    //   mode=2 走原生：建模型→填字段→置 +0x298=1→调 0xA21550 生成（更稳，字段映射未全）
+    // ------------------------------------------------------------------
+    bool SendAppMsgObject(const std::string& toid, const std::string& xml,
+                          int mode, std::string& reason)
+    {
+        uintptr_t base = GetWeixinDllBase();
+        if (!base) { reason = "weixin_not_loaded"; return false; }
+        if (toid.empty() || xml.empty()) { reason = "empty_toid_or_xml"; return false; }
+        // 反汇编证据：0x6B2D30 在 body+0x168 初始化一个 std::string：
+        //   data@+0x168  len@+0x178  cap@+0x180(=0xF)
+        // 因此 body+0x180 是**上一个字符串的容量字段**，不是独立 XML 字段。
+        // 往这里写 WxString 会破坏该字符串状态（析构/拷贝时可能崩）。
+        // 动态抓到的 context+0x180 属于另一个对象，不能等同于本工厂的 body。
+        reason = "unsafe_disabled: body+0x180 is the capacity field of the string at body+0x168";
+        (void)mode;
+        return false;
+
+        // 1) 原生工厂创建 ChatMsg（0x22A92B0：分配 0x718 + 基础构造器 + 引用计数）
+        uint64_t pair[2] = { 0, 0 };
+        WeixinCall make_appmsg = (WeixinCall)(base + 0x22A92B0);
+        make_appmsg((uint64_t)pair);
+        uint64_t body = pair[0];
+        uint64_t wrapper = pair[1];
+        if (!body || !wrapper) { reason = "factory_failed"; return false; }
+
+        // 2) 基础字段
+        SetWeixinString((WeixinString*)(body + 0xB0), toid);   // talker
+        *(uint32_t*)(body + 0xD8) = 49;                        // 类型 appmsg
+        *(uint32_t*)(body + 0xDC) = 6;                         // 原生伴生值
+
+        // 3) XML 写入 ChatMsg+0x180（std::string：SSO 16 字节，len@+0x190，cap@+0x198）
+        SetWeixinString((WeixinString*)(body + 0x180), xml);
+
+        // 4) 发送参数（与文本一致）
+        uint64_t* data = HeapAlloc_mb<uint64_t>(0x20);
+        if (!data) { reason = "alloc_failed"; return false; }
+        data[0] = body;
+        data[1] = wrapper;
+        data[2] = 0;
+
+        uint64_t* arg1 = HeapAlloc_mb<uint64_t>(0x28);
+        if (!arg1) { reason = "alloc_failed"; return false; }
+        arg1[0] = base + offset::param1_vtable;
+        arg1[1] = reinterpret_cast<uint64_t>(data);
+        arg1[2] = (uint64_t)data + 0x10;
+        arg1[3] = (uint64_t)data + 0x10;
+        arg1[4] = 1;
+
+        uint64_t* arg2 = HeapAlloc_mb<uint64_t>(0xE8);
+        if (!arg2) { reason = "alloc_failed"; return false; }
+        BuildSendParam2_Text(arg2);
+
+        WeixinCall send_message = (WeixinCall)(base + offset::send_message);
+        long long rc = (long long)send_message((uint64_t)arg1, (uint64_t)arg2);
+
+        char buf[200];
+        snprintf(buf, sizeof(buf),
+                 "invoked(mode=1: appmsg type=49, xml@ChatMsg+0x180 len=%zu, ret=0x%llX)",
+                 xml.size(), (unsigned long long)rc);
+        reason = buf;
+        return true;
+    }
 
     void DecodePic(const std::string& enc_pic_path, const std::string& dec_pic_path)
     {

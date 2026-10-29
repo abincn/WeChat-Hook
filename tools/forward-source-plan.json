@@ -1,0 +1,27 @@
+{
+  "name": "forward_source",
+  "target_version": "4.1.10.27",
+  "note": "Observation only. Uses existing schema-2 /probe/arm; no DLL/config replacement or native function invocation.",
+  "points": [
+    {
+      "rva": "0x2161FC0", "dump": 256, "dump_reg": 3,
+      "str_reg": 3, "str_off": 16, "str_max": 128,
+      "note": "Read the source DTO directly, including scalar block +0xB8; the string at +0x10 is captured independently."
+    },
+    {
+      "rva": "0x43ACC80", "dump": 32, "dump_reg": 2,
+      "follow_off": 0, "follow2_off": 0, "follow_len": 256,
+      "note": "Input vector -> first shared-ptr pair -> source DTO copied by the native constructor."
+    },
+    {
+      "rva": "0x1679340", "dump": 64, "dump_reg": 1,
+      "follow_off": 8, "follow2_off": 0, "follow_len": 256,
+      "note": "Async closure -> descriptor vector -> first descriptor; capture its actual executing thread."
+    },
+    {
+      "rva": "0x16BDF60", "dump": 32, "dump_reg": 2,
+      "follow_off": 0, "follow2_off": 0, "follow_len": 256,
+      "note": "Service input vector -> first descriptor. Confirms arrival at service, not send success."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// dllmain.cpp
+﻿// dllmain.cpp
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <string>
@@ -66,6 +66,24 @@ static void ParseCmdLine(const std::string& cmd)
     // ----------------------------
     // 解析 CallBackURL
     // ----------------------------
+
+    const std::string bind_key = "BindAddr=";
+    size_t bind_pos = cmd.find(bind_key);
+    if (bind_pos != std::string::npos)
+    {
+        bind_pos += bind_key.length();
+        std::string v = ExtractQuotedString(cmd, bind_pos);
+        if (!v.empty()) g_BindAddr = v;   // 例: BindAddr=0.0.0.0
+    }
+
+    const std::string tok_key = "Token=";
+    size_t tok_pos = cmd.find(tok_key);
+    if (tok_pos != std::string::npos)
+    {
+        tok_pos += tok_key.length();
+        std::string v = ExtractQuotedString(cmd, tok_pos);
+        if (!v.empty()) g_Token = v;
+    }
 
     const std::string recv_url = "CallBackURL=";
     size_t recv_pos = cmd.find(recv_url);

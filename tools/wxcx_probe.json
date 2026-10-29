@@ -1,0 +1,209 @@
+{
+  "_comment": "外挂探针预置。放在 version.dll 同目录，改完保存即生效（每次请求都会重新读取，无需重启微信或重编 DLL）。",
+  "_fields": {
+    "rva": "十六进制字符串或十进制数字，模块内 RVA",
+    "dump": "命中时 dump 的字节数（≤256）",
+    "follow_off": "可选：从 rcx+follow_off 读指针后再 dump",
+    "follow_len": "可选：跟随后 dump 的字节数",
+    "follow_read_offset": "可选：最终指针的读取偏移（读取大对象尾部；范围 0..1048576）",
+    "follow2_off": "可选：第二跳偏移（0 表示偏移 0 有效；省略表示不做第二跳）",
+    "str_reg": "可选：字符串所在寄存器 1=rcx 2=rdx 3=r8 4=rsi 5=rdi 6=rax",
+    "str_off": "可选：str_reg + str_off 指向 std::string/wstring（len@+0x10 cap@+0x18）",
+    "str_max": "可选：最多抓多少字节字符串",
+    "dump_reg": "对象dump/指针跟随的基址寄存器：1=rcx(默认) 2=rdx 3=r8 4=r9；可与str_reg同时使用"
+  },
+  "presets": {
+    "forwardprobe4": [
+      {
+        "rva": "0x2161FC0",
+        "dump": 128,
+        "note": "转发业务函数（含 0x216272B 那段；上轮曾在其中命中）"
+      },
+      {
+        "rva": "0x9F6C40",
+        "dump": 64,
+        "note": "该函数直接调用的未知点 A"
+      },
+      {
+        "rva": "0x1677A30",
+        "dump": 64,
+        "note": "send_message：A/B 命中，C 未命中（对照）"
+      },
+      {
+        "rva": "0x1B0270",
+        "dump": 64,
+        "note": "通用构造器（上轮 20 次命中，噪声点）"
+      }
+    ],
+    "forwardprobe5": [
+      {
+        "rva": "0x1676DD0",
+        "dump": 64,
+        "note": "提交包装（A/B 命中）"
+      },
+      {
+        "rva": "0xA21550",
+        "dump": 64,
+        "note": "ToXml 触发上层"
+      },
+      {
+        "rva": "0xA63B40",
+        "dump": 64,
+        "note": "ToXml"
+      },
+      {
+        "rva": "0x22A92B0",
+        "dump": 64,
+        "note": "AppMsg 工厂（C 未命中）"
+      }
+    ],
+    "sendpath": [
+      {
+        "rva": "0x1677A30",
+        "dump": 32
+      }
+    ],
+    "envelope": [
+      {
+        "rva": "0x2C6C550",
+        "dump": 96,
+        "follow_off": 8,
+        "follow_len": 160,
+        "note": "注意：反汇编显示这是\"从缓冲区读字节 + 跳转表分派\"的解析器，不是序列化器"
+      }
+    ],
+    "messages": [
+      {
+        "rva": "0x2C6C550",
+        "dump": 96,
+        "follow_off": 8,
+        "follow_len": 160
+      },
+      {
+        "rva": "0x64A950",
+        "dump": 32
+      }
+    ],
+    "forwardprobe3": [
+      {
+        "rva": "0x16778E0",
+        "dump": 64
+      },
+      {
+        "rva": "0x1677F00",
+        "dump": 64
+      },
+      {
+        "rva": "0x1677F10",
+        "dump": 64,
+        "note": "已验证 = 消息列表 ReleaseMessages（不是发送）"
+      },
+      {
+        "rva": "0x1676B20",
+        "dump": 64
+      }
+    ],
+    "forwardprobe": [
+      {
+        "rva": "0x229F220",
+        "dump": 64
+      },
+      {
+        "rva": "0x22A59D0",
+        "dump": 64
+      },
+      {
+        "rva": "0x22A92B0",
+        "dump": 64
+      },
+      {
+        "rva": "0x510E940",
+        "dump": 64
+      }
+    ],
+    "appmsg49": [
+      {
+        "rva": "0x510E940",
+        "dump": 64
+      },
+      {
+        "rva": "0x51F7DF0",
+        "dump": 64
+      },
+      {
+        "rva": "0x51FE8D0",
+        "dump": 64
+      }
+    ],
+    "toxml": [
+      {
+        "rva": "0xA63B40",
+        "dump": 64
+      }
+    ],
+    "parsexml": [
+      {
+        "rva": "0xA66280",
+        "dump": 64
+      }
+    ],
+    "toxml2": [
+      {
+        "rva": "0xA63B40",
+        "dump": 32
+      },
+      {
+        "rva": "0xA63F45",
+        "dump": 32,
+        "str_reg": 4,
+        "str_off": 384,
+        "str_max": 256
+      }
+    ],
+    "body_dump": [
+      {
+        "rva": "0x1677A30",
+        "dump": 256,
+        "follow_off": 8,
+        "follow_len": 256,
+        "follow2_off": 0
+      }
+    ],
+    "forward_entry": [
+      {
+        "rva": "0x2161FC0",
+        "dump": 96,
+        "dump_reg": 2,
+        "follow_off": 0,
+        "follow_len": 128,
+        "note": "五参数业务编排入口：rdx=选择上下文(map/vector/flag)，r8=源消息对象；仅观测，ABI尚未恢复"
+      },
+      {
+        "rva": "0x43ACC80",
+        "dump": 64,
+        "dump_reg": 3,
+        "follow_off": 0,
+        "follow_len": 128,
+        "note": "对象展开：r8=类型2映射，rdx=源对象vector；观察map头而非猜quad"
+      },
+      {
+        "rva": "0x1649E60",
+        "dump": 32,
+        "dump_reg": 3,
+        "follow_off": 0,
+        "follow2_off": 0,
+        "follow_len": 256,
+        "note": "任务封装：r8=shared-ptr对vector，两跳取第一个对象"
+      },
+      {
+        "rva": "0x60A0A0",
+        "dump": 32,
+        "dump_reg": 4,
+        "follow_off": 0,
+        "follow2_off": 0,
+        "follow_len": 256,
+        "note": "另一分支任务封装：r9=shared-ptr对vector，r8=字符串对象"
+      }
+    ]
+  }
+}

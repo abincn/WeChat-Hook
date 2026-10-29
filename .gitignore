@@ -362,3 +362,33 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local WeChat runtime, analysis databases and private test evidence
+/capture/
+/dist/
+/docs/evidence/
+/RE_NOTES.md
+*.dll
+*.DLL
+*.exe
+*.EXE
+*.i64
+*.idb
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+*.dmp
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+*.zip
+*.7z
+/wxcx.config.json
+/tools/wxcx.config.json
+/tools/media_pipeline_cases_*.json
+/tools/forward-filehelper-*.json
+/docs/TEST_MACHINE_TRANSFER_AUTHORIZATION.md

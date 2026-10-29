@@ -1,0 +1,10 @@
+{
+  "_comment": "复制成 wxcx.config.json 后按真机实际情况改；脚本参数 > 本文件 > 自动探测",
+  "VersionDir": "D:\\Program Files\\Tencent\\Weixin\\4.1.10.27",
+  "InstallRoot": "D:\\Program Files\\Tencent\\Weixin",
+  "Port": 30001,
+  "BindAddr": "127.0.0.1",
+  "Token": "",
+  "CallBackURL": "",
+  "ExpectedVersion": "4.1.10.27"
+}

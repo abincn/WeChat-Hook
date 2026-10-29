@@ -1,4 +1,4 @@
-#include <cstdint>
+﻿#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <Windows.h>
@@ -17,6 +17,7 @@
 #include "wx_ini_reader.h"
 #include "inline_weixin_dll_load.h"
 #include "hook_xlog.h"
+#include "wxcx_guard.h"
 
 
 
@@ -193,12 +194,15 @@ void Evt_WeixinLoad()
     
     Patch_Revoke();
 
+    // 反检测层放到独立线程安装, 避免在 loader lock 里装 hook
+    wxcx::guard::InstallAsync();
+
 
     // 创建并启动HTTP服务器
     if (!g_httpServer)
     {
         g_httpServer = new HttpServer();
-        g_httpServer->Start("0.0.0.0", g_StartPort);
+        g_httpServer->Start(g_BindAddr.c_str(), g_StartPort);
     }
 #ifdef _DEBUG
     //xLog 日志
@@ -210,6 +214,3 @@ void Evt_WeixinLoad()
     //取回调URL
     GetWxRecvUrl();         
 }
-
-
-

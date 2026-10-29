@@ -1,0 +1,9 @@
+{
+  "_instructions": "Replace EVERY source_msgsvrid 0 sentinel with the real positive decimal string ID and replace source_talker/toid as appropriate. The unedited template must fail validation.",
+  "scenarios": [
+    {"id": "text_1", "label": "Received plain text", "type": "text", "source_msgsvrid": "0", "source_talker": "wxid_source", "toid": "filehelper", "downloaded": "not_applicable"},
+    {"id": "link_1", "label": "Received link card", "type": "link", "source_msgsvrid": "0", "source_talker": "wxid_source", "toid": "filehelper", "downloaded": "not_applicable"},
+    {"id": "image_1", "label": "Downloaded image", "type": "image", "source_msgsvrid": "0", "source_talker": "wxid_source", "toid": "filehelper", "downloaded": true},
+    {"id": "file_1", "label": "Downloaded file", "type": "file", "source_msgsvrid": "0", "source_talker": "wxid_source", "toid": "filehelper", "downloaded": true}
+  ]
+}

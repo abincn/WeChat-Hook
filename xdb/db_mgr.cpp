@@ -1,4 +1,4 @@
-#include "db_mgr.h"
+﻿#include "db_mgr.h"
 #include "xwechat_offsets.h"
 #include "SundaySearch.h"
 #include "global.h"
@@ -184,7 +184,7 @@ namespace xmgr {
 
 	const std::map<std::string, LPVOID>& DatabaseMgr::searchDatabases() {
 		std::lock_guard<std::mutex> lg(m_searchDbMtx);
-		if (!g_IsLogin) {
+		if (!g_IsLogin && !g_ScanDatabasesForced) {
 			m_dbs.clear();
 			return m_dbs;
 		}

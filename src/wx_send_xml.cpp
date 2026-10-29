@@ -1,3 +1,4 @@
+#include "wxcx_sample.h"
 #include "wx_send_xml.h"
 #include <windows.h>
 #include <memory>
@@ -641,8 +642,16 @@ namespace WeixinSendXML
             Memory::Write<uint64_t>(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(rdx) + 0x20), g_weixinBase + 0x367849);
 
             // 调用转发函数
-            WeixinCall forwardCall = (WeixinCall)(g_weixinBase + Offsets::FORWARD_XML_CALL);
+            // 安全检查：4.1.10.27 的 .pdata 显示 0x1CF3D20 位于函数
+            // 0x1CF2FA0–0x1CF5687 的**内部**，不是函数入口。
+            // 直接从函数中段调用属于未定义行为，可能破坏栈/寄存器状态。
+            if (!wxcx::sample::IsFunctionStart(Offsets::FORWARD_XML_CALL))
+            {
+                OutputDebugStringA("[wxcx] ForwardXml: offset is not a function entry, refused\n");
+                return false;
+            }
 
+            WeixinCall forwardCall = (WeixinCall)(g_weixinBase + Offsets::FORWARD_XML_CALL);
 
             forwardCall((uint64_t)rcx, (uint64_t)rdx, (uint64_t)r8);
 

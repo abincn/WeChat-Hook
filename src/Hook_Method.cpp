@@ -11,7 +11,8 @@ struct CALL_HOOK
     void* call_addr;
     uint8_t original[16];
     size_t stolen_len;
-    void* trampoline;
+    void* trampoline;    // near stub (jmp -> real)
+    void* real_stub;     // 保存/跳回的实体桩, 必须一起释放
 };
 
 static std::vector<CALL_HOOK> g_Hooks;
@@ -88,6 +89,7 @@ bool Hook_Call_R3(void* call_addr, size_t hook_len, CallHookHandler handler)
     if (!near_stub) return false;
 
     hk.trampoline = near_stub;
+    hk.real_stub = real;
 
     uint8_t* p = real;
 
@@ -185,6 +187,11 @@ bool Hook_Call_R3(void* call_addr, size_t hook_len, CallHookHandler handler)
     memset((uint8_t*)call_addr + 5, 0x90, hook_len - 5);
     VirtualProtect(call_addr, hook_len, old, &old);
 
+    // 写完就降权: 不给探针留 RWX 特征
+    DWORD hardenOld = 0;
+    VirtualProtect(real, 512, PAGE_EXECUTE_READ, &hardenOld);
+    VirtualProtect(near_stub, 32, PAGE_EXECUTE_READ, &hardenOld);
+
     g_Hooks.push_back(hk);
     return true;
 }
@@ -208,6 +215,7 @@ bool Hook_Call(void* call_addr, size_t hook_len, CallHookHandler handler)
     if (!near_stub) return false;
 
     hk.trampoline = near_stub;
+    hk.real_stub = real;
 
     uint8_t* p = real;
 
@@ -311,6 +319,11 @@ bool Hook_Call(void* call_addr, size_t hook_len, CallHookHandler handler)
     memset((uint8_t*)call_addr + 5, 0x90, hook_len - 5);
     VirtualProtect(call_addr, hook_len, old, &old);
 
+    // 写完就降权: 不给探针留 RWX 特征
+    DWORD hardenOld = 0;
+    VirtualProtect(real, 512, PAGE_EXECUTE_READ, &hardenOld);
+    VirtualProtect(near_stub, 32, PAGE_EXECUTE_READ, &hardenOld);
+
     g_Hooks.push_back(hk);
     return true;
 }
@@ -338,6 +351,7 @@ bool Hook_Inline(void* inline_addr, size_t hook_len, CallHookHandler handler)
         return false;
     }
     hk.trampoline = near_stub;
+    hk.real_stub = real;
 
     uint8_t* p = real;
 
@@ -424,7 +438,13 @@ bool Hook_Inline(void* inline_addr, size_t hook_len, CallHookHandler handler)
     memset((uint8_t*)inline_addr + 5, 0x90, hook_len - 5);
     VirtualProtect(inline_addr, hook_len, old, &old);
 
+    // 写完就降权: 不给探针留 RWX 特征
+    DWORD hardenOld = 0;
+    VirtualProtect(real, 512, PAGE_EXECUTE_READ, &hardenOld);
+    VirtualProtect(near_stub, 32, PAGE_EXECUTE_READ, &hardenOld);
+
     g_Hooks.push_back(hk);
+    FlushInstructionCache(GetCurrentProcess(), inline_addr, hook_len);
     return true;
 }
 
@@ -439,7 +459,11 @@ bool RemoveCallHook(void* call_addr)
                 PAGE_EXECUTE_READWRITE, &old);
             memcpy(call_addr, it->original, it->stolen_len);
             VirtualProtect(call_addr, it->stolen_len, old, &old);
-            VirtualFree(it->trampoline, 0, MEM_RELEASE);
+            FlushInstructionCache(GetCurrentProcess(), call_addr, it->stolen_len);
+
+            // 两块可执行内存都要释放, 否则每次 arm/disarm 泄漏 512 字节
+            if (it->trampoline) VirtualFree(it->trampoline, 0, MEM_RELEASE);
+            if (it->real_stub)  VirtualFree(it->real_stub, 0, MEM_RELEASE);
             g_Hooks.erase(it);
             return true;
         }

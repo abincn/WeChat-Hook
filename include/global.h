@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <windows.h>
 #include <string>
 #include <cstdint>
@@ -23,10 +23,13 @@ extern DWORD 进程PID;
 extern DWORD 父进程PID;
 extern HWND  g_WeixinMainHwnd;
 extern volatile uint64_t g_IsLogin;   // 0=未登录 1=已登录
+extern volatile bool g_ScanDatabasesForced;  // 探测期绕过 DB 门禁
 extern volatile uint64_t g_getprofile;
 
 extern volatile bool g_LoginMonitorRunning;
 extern std::string g_CallBack_Url;
+extern std::string g_BindAddr;   // HTTP 监听地址, 默认仅本机
+extern std::string g_Token;      // 非空则所有请求必须带 X-Wxcx-Token 或 ?token=
 extern CRITICAL_SECTION g_dbMgrCriticalSection;
 
 extern std::wstring g_AppDataDir;
@@ -106,6 +109,3 @@ namespace Offsets
     inline constexpr uintptr_t MESSAGE_PARAM_VTABLE = 0x76BCF38;
     inline constexpr uintptr_t FORWARD_XML_CALL = 0x1CF3D20;
 }
-
-
-
